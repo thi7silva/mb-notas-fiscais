@@ -14,6 +14,15 @@ export interface ClientData {
   limiteDisponivel: number;
   boletoAtraso: number;
   codigoMB: string;
+  notas?: Invoice[];
+}
+
+export interface Invoice {
+  idNota: string;
+  numeroNota: string;
+  dataFaturamento: string;
+  valorNota: number;
+  linkVisualizacao: string;
 }
 
 export interface ClientSearchResponse {
@@ -127,6 +136,37 @@ export const apiService = {
       return data;
     } catch (error) {
       console.error("Erro ao buscar cliente:", error);
+      throw error;
+    }
+  },
+
+  async getInvoices(codigoMB: string): Promise<Invoice[]> {
+    try {
+      const apiConfig = {
+        NAME: "consultaNotaFiscalArquivo",
+        PUBLIC_KEY: "Zzx4pBM0BFxQmkPXxu4adk9sW",
+      };
+
+      const params = {
+        codigoMB: codigoMB,
+      };
+
+      // zohoService.invokeCustomApi can handle the response wrapping if configured,
+      // but based on the provided JSON, it returns { success: true, data: [...], ... }
+      // The service seems to extract .data if present.
+      // Let's verify zoho.service.ts extractData method.
+      // It does: let data = response.data || response.result || response;
+      // So if the response is { data: [...] }, it returns [...].
+
+      const data = await zohoService.invokeCustomApi<Invoice[]>(
+        apiConfig,
+        "GET",
+        params,
+      );
+
+      return data || [];
+    } catch (error) {
+      console.error("Erro ao buscar notas fiscais:", error);
       throw error;
     }
   },

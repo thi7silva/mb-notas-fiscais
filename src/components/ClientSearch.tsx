@@ -3,6 +3,8 @@ import { Search, ArrowRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { apiService } from "@/services/api";
+import type { ClientData } from "@/services/api";
+import { InvoiceList } from "./InvoiceList";
 import { getState } from "@/zoho";
 import { toast } from "sonner";
 import { validateCpfCnpj } from "@/lib/validation";
@@ -11,6 +13,7 @@ export function ClientSearch() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
 
   const formatCpfCnpj = (value: string) => {
     const v = value.replace(/\D/g, "");
@@ -49,7 +52,19 @@ export function ClientSearch() {
 
       if (Array.isArray(result) && result.length > 0) {
         toast.success(`Cliente encontrado: ${result[0].razaoSocial}`);
-        // TODO: Handle selection/navigation
+
+        try {
+          // Fetch invoices for the found client
+          const invoices = await apiService.getInvoices(result[0].codigoMB);
+          const clientWithInvoices = { ...result[0], notas: invoices };
+          setSelectedClient(clientWithInvoices);
+        } catch (error) {
+          console.error("Erro ao buscar notas:", error);
+          toast.error(
+            "Erro ao carregar notas fiscais, mas cliente encontrado.",
+          );
+          setSelectedClient(result[0]);
+        }
       } else {
         toast.info("Nenhum cliente encontrado.");
       }
@@ -73,6 +88,16 @@ export function ClientSearch() {
     setIsValid(validateCpfCnpj(formatted));
   };
 
+  if (selectedClient) {
+    return (
+      <InvoiceList
+        client={selectedClient}
+        invoices={selectedClient.notas || []}
+        onBack={() => setSelectedClient(null)}
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] p-4">
       <div className="flex w-full max-w-4xl overflow-hidden rounded-2xl bg-card shadow-2xl md:flex-row flex-col">
@@ -93,7 +118,7 @@ export function ClientSearch() {
           </div>
 
           <div className="relative z-10 mt-8 hidden text-xs text-primary-foreground/60 md:block">
-            Sistema Integrado Melhor Bocado
+            Melhor Bocado | A melhor parte do seu dia!
           </div>
         </div>
 
