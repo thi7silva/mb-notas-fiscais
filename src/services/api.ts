@@ -6,6 +6,23 @@ interface CreateIdResponse {
   idFile: string;
 }
 
+export interface ClientData {
+  idCRM: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpjCpf: string;
+  limiteDisponivel: number;
+  boletoAtraso: number;
+  codigoMB: string;
+}
+
+export interface ClientSearchResponse {
+  success: boolean;
+  message: string;
+  data: ClientData[];
+  total: number;
+}
+
 export const apiService = {
   async createProcessingId(): Promise<string> {
     try {
@@ -83,6 +100,34 @@ export const apiService = {
       );
     } catch (error) {
       console.error("Erro ao reportar falha no processamento:", error);
+    }
+  },
+
+  async searchClient(cpfCnpj: string, email: string): Promise<ClientData[]> {
+    try {
+      const cleanCpfCnpj = cpfCnpj.replace(/\D/g, "");
+
+      const apiConfig = {
+        NAME: "consultaCliente",
+        PUBLIC_KEY: "J39jfTQGHMzBYRSVaPfwbjatX",
+      };
+
+      const params = {
+        filter: cleanCpfCnpj,
+        email: email,
+      };
+
+      // zohoService.invokeCustomApi unwraps response.data, so we get ClientData[] directly
+      const data = await zohoService.invokeCustomApi<ClientData[]>(
+        apiConfig,
+        "GET",
+        params,
+      );
+
+      return data;
+    } catch (error) {
+      console.error("Erro ao buscar cliente:", error);
+      throw error;
     }
   },
 };

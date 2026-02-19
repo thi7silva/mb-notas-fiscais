@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { apiService } from "@/services/api";
+import { getState } from "@/zoho";
+import { toast } from "sonner";
+import { validateCpfCnpj } from "@/lib/validation";
 
 export function ClientSearch() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isValid, setIsValid] = useState(false);
 
   const formatCpfCnpj = (value: string) => {
     const v = value.replace(/\D/g, "");
@@ -26,12 +32,37 @@ export function ClientSearch() {
     }
   };
 
-  const handleSearch = () => {
-    console.log("Searching for:", searchTerm);
+  const handleSearch = async () => {
+    if (!searchTerm || !isValid) {
+      toast.warning("Por favor, informe um CPF ou CNPJ válido.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const userEmail =
+        getState().loginUser || "thiago@albatechsolutions.com.br"; // Fallback for dev/offline
+      console.log("🔍 Buscando cliente:", searchTerm, "Email:", userEmail);
+
+      const result = await apiService.searchClient(searchTerm, userEmail);
+      console.log("✅ Resultado da busca:", result);
+
+      if (Array.isArray(result) && result.length > 0) {
+        toast.success(`Cliente encontrado: ${result[0].razaoSocial}`);
+        // TODO: Handle selection/navigation
+      } else {
+        toast.info("Nenhum cliente encontrado.");
+      }
+    } catch (error) {
+      console.error("❌ Erro na busca:", error);
+      toast.error("Erro ao buscar cliente. Verifique o console.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !loading && isValid) {
       handleSearch();
     }
   };
@@ -39,6 +70,7 @@ export function ClientSearch() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCpfCnpj(e.target.value);
     setSearchTerm(formatted);
+    setIsValid(validateCpfCnpj(formatted));
   };
 
   return (
@@ -51,7 +83,7 @@ export function ClientSearch() {
           <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
           <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
 
-          <div className="relative z-10 flex flex-1 flex-col justify-center mt-8 md:mt-0">
+          <div className="relative z-10 flex flex-1 flex-col justify-center">
             <h1 className="text-3xl font-bold text-white md:text-3xl lg:text-4xl">
               Minhas Notas
             </h1>
@@ -92,7 +124,7 @@ export function ClientSearch() {
                 <Input
                   type="text"
                   placeholder="000.000.000-00"
-                  className="h-12 border-muted-foreground/30 pl-10 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-primary/20"
+                  className={`h-12 border-muted-foreground/30 pl-10 text-lg shadow-sm transition-all focus-visible:border-primary focus-visible:ring-primary/20 ${isValid ? "border-green-500 focus-visible:border-green-500 focus-visible:ring-green-500/20" : ""}`}
                   value={searchTerm}
                   onChange={handleChange}
                   onKeyDown={handleKeyDown}
@@ -103,11 +135,21 @@ export function ClientSearch() {
 
               <Button
                 onClick={handleSearch}
-                className="h-12 w-full text-base font-semibold shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+                disabled={loading || !isValid}
+                className="h-12 w-full text-base font-semibold shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                 size="lg"
               >
-                Consultar
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Buscando...
+                  </>
+                ) : (
+                  <>
+                    Consultar
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
