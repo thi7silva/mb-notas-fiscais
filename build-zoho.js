@@ -67,14 +67,32 @@ jsFiles.forEach((jsFile) => {
   }
 });
 
-// 5. Remover referências aos arquivos CSS e JS do HTML
-htmlContent = htmlContent.replace(/<link[^>]*href="[^"]*\.css"[^>]*>/g, "");
+// 5. Remover referências aos arquivos CSS locais do HTML (preserva CDN)
 htmlContent = htmlContent.replace(
-  /<script[^>]*src="[^"]*\.js"[^>]*><\/script>/g,
+  /<link[^>]*href="(?!https?:\/\/)[^"]*\.css"[^>]*>/g,
+  "",
+);
+// Remover apenas scripts locais (não externos como SDK do Zoho)
+htmlContent = htmlContent.replace(
+  /<script[^>]*src="(?!https?:\/\/)[^"]*\.js"[^>]*><\/script>/g,
   "",
 );
 
-// 6. Adicionar referências aos novos arquivos inline
+// 6. Garantir que o SDK do Zoho Creator está incluído
+const ZOHO_SDK_URL =
+  "https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js";
+const ZOHO_SDK_TAG = `<script src="${ZOHO_SDK_URL}"></script>`;
+
+// Verificar se o SDK já está no HTML
+const hasZohoSDK = htmlContent.includes("zohostatic.com/creator/widgets");
+
+if (!hasZohoSDK) {
+  console.log("  ✓ SDK do Zoho Creator adicionado automaticamente");
+  // Adicionar SDK antes do </head>
+  htmlContent = htmlContent.replace("</head>", `  ${ZOHO_SDK_TAG}\n  </head>`);
+}
+
+// 7. Adicionar referências aos novos arquivos inline
 const finalHTML = htmlContent
   .replace("</head>", '  <link rel="stylesheet" href="widget.css">\n  </head>')
   .replace("</body>", '  <script src="widget.js"></script>\n  </body>');
