@@ -112,9 +112,9 @@ export const apiService = {
     }
   },
 
-  async searchClient(cpfCnpj: string, email: string): Promise<ClientData[]> {
+  async searchClient(searchTerm: string, email: string): Promise<ClientData[]> {
     try {
-      const cleanCpfCnpj = cpfCnpj.replace(/\D/g, "");
+      const cleanTerm = searchTerm.replace(/[^0-9a-zA-Z]/g, "");
 
       const apiConfig = {
         NAME: "consultaCliente",
@@ -122,7 +122,7 @@ export const apiService = {
       };
 
       const params = {
-        filter: cleanCpfCnpj,
+        filter: cleanTerm,
         email: email,
       };
 
