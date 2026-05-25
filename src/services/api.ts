@@ -32,6 +32,11 @@ export interface ClientSearchResponse {
   total: number;
 }
 
+export interface ConsultaNotaResponse {
+  success: boolean;
+  message: string;
+}
+
 export const apiService = {
   async createProcessingId(): Promise<string> {
     try {
@@ -137,6 +142,38 @@ export const apiService = {
     } catch (error) {
       console.error("Erro ao buscar cliente:", error);
       throw error;
+    }
+  },
+
+  async consultaNotaFiscal(
+    codigoMB: string,
+    data: string,
+  ): Promise<ConsultaNotaResponse> {
+    const apiConfig = {
+      NAME: "consultaNotaFiscal",
+      PUBLIC_KEY: "5TqEtvq2Vjp1WpCXfgK8OtzxS",
+    };
+
+    const payload = {
+      codigomb: codigoMB,
+      data: data,
+    };
+
+    try {
+      const result = await zohoService.invokeCustomApi<ConsultaNotaResponse>(
+        apiConfig,
+        "POST",
+        payload,
+        true,
+      );
+      return result;
+    } catch (error: unknown) {
+      // A API pode retornar success: false como resposta válida.
+      // O zohoService rejeita nesses casos, então capturamos e retornamos.
+      if (error instanceof Error) {
+        return { success: false, message: error.message };
+      }
+      return { success: false, message: "Erro ao consultar nota fiscal." };
     }
   },
 
