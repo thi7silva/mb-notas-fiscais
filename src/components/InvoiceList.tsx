@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, Search, HelpCircle, Loader2, CalendarDays } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { ArrowLeft, Search, HelpCircle, Loader2, CalendarDays, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +29,28 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
   const [consultaData, setConsultaData] = useState("");
   const [consultaLoading, setConsultaLoading] = useState(false);
   const [consultaResult, setConsultaResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setInvoices(invoicesProp);
   }, [invoicesProp]);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    cooldownRef.current = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, [cooldownSeconds > 0]);
 
   const refreshInvoices = async () => {
     setRefreshing(true);
@@ -73,6 +91,7 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
       setConsultaResult({ success: false, message: "Erro inesperado ao consultar." });
     } finally {
       setConsultaLoading(false);
+      setCooldownSeconds(60);
     }
   };
 
@@ -100,9 +119,10 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
 
   return (
     <>
-    <div className="flex min-h-screen justify-center bg-background bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px] p-4">
-      <div className="w-full max-w-7xl space-y-8">
-        {/* Compact Header with Primary Background */}
+    <div className="flex flex-col min-h-screen bg-background bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[20px_20px]">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background/90 backdrop-blur-md">
+        <div className="w-full max-w-7xl mx-auto">
         <div className="bg-primary text-primary-foreground p-6 rounded-3xl shadow-lg relative overflow-hidden">
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
@@ -143,9 +163,8 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
                 />
               </div>
               <Button
-                variant="ghost"
                 onClick={() => { setDialogOpen(true); setConsultaResult(null); setConsultaData(""); }}
-                className="h-10 text-white/90 hover:bg-white/20 hover:text-white border border-white/30 rounded-xl text-sm font-medium whitespace-nowrap"
+                className="h-10 bg-white text-primary hover:bg-white/90 border-0 rounded-xl text-sm font-bold whitespace-nowrap shadow-md"
                 disabled={refreshing}
               >
                 {refreshing ? (
@@ -158,9 +177,12 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
             </div>
           </div>
         </div>
+        </div>
+      </div>
 
-        {/* Content */}
-        <div>
+      {/* Scrollable Content */}
+      <div className="flex-1 px-4 pb-8">
+        <div className="w-full max-w-7xl mx-auto">
           {filteredAndSortedInvoices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredAndSortedInvoices.map((invoice) => (
@@ -220,13 +242,18 @@ export function InvoiceList({ client, invoices: invoicesProp, onBack }: InvoiceL
 
           <Button
             onClick={handleConsultaNota}
-            disabled={consultaLoading || !consultaData}
+            disabled={consultaLoading || !consultaData || cooldownSeconds > 0}
             className="w-full"
           >
             {consultaLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Consultando...
+              </>
+            ) : cooldownSeconds > 0 ? (
+              <>
+                <Clock className="mr-2 h-4 w-4" />
+                Tentar novamente em {cooldownSeconds}s
               </>
             ) : (
               "Consultar"
